@@ -2,6 +2,11 @@ import os
 import json
 import pandas as pd
 import numpy as np
+import requests
+from bs4 import BeautifulSoup
+from config import headers
+from app.utils import extract_data
+from app.utils import translate_data
 
 class Product:
     def __init__(self, product_id, product_name, opinions, stats):
@@ -17,12 +22,33 @@ class Product:
         return f"Product(product_id={self.product_id}, product_name={self.product_name}, opinions=["+",".join(repr(opinion) for opinion in self.opinions)+f"], stats={self.stats})"
 
     def export_opinions(self):
-        if not os.path.exists("./app/data"):
-            os.mkdir("./app/data")
-        if not os.path.exists("./app/data/opinions"):
-            os.mkdir("./app/data/opinions")
-        with open(f".app/data/opinions/{self.product_id}.json", "w", encoding="UTF-8") as jf:
-            json.dump([opinion.transform_to_dict() for opinion in self.opinions], jf, ensure_ascii=False, indent=4)
+        next_page = f"https://www.ceneo.pl/{product_id}#tab=reviews"
+        while next_page:
+            response = requests.get(next_page, headers = headers)
+            if response.status_code == 200:
+                print(next_page)
+                page_dom = BeautifulSoup(response.text, 'html.parser')
+                opinions = page_dom.select("div.js_product-review:not(.user-post--highlight)")
+                print(len(opinions))
+                for opinion in opinions:
+                    single_opinion = Opinion
+                    single_opinion.extract(opinion)
+
+                single_opinion['recommendation'] = True if single_opinion['recommendation']=='Polecam' else False if  single_opinion['recommendation']=="Nie polecam" else None
+                single_opinion['stars'] = float(single_opinion['stars'].split("/")[0].replace(",", "."))
+                single_opinion['vote_yes'] = int(single_opinion['vote_yes'])
+                single_opinion['vote_no'] = int(single_opinion['vote_no'])
+                self.opinions.append(single_opinion)
+            try:
+                next_page = "https://www.ceneo.pl" + page_dom.select_one("a.pagination__next")["href"]
+            except TypeError:
+                next_page = None
+            if not os.path.exists("./app/data"):
+                os.mkdir("./app/data")
+            if not os.path.exists("./app/data/opinions"):
+                os.mkdir("./app/data/opinions")
+            with open(f".app/data/opinions/{self.product_id}.json", "w", encoding="UTF-8") as jf:
+                json.dump([opinion.transform_to_dict() for opinion in self.opinions], jf, ensure_ascii=False, indent=4)
 
     def export_info(self):
         if not os.path.exists("./app/data"):
@@ -99,6 +125,15 @@ class Opinion:
     
     def __repr__(self):
         return "Opinion("+", ".join([f"{key}={str(getattr(self, key))}" for key in self.selectors.keys()])+")"
+    
+    def extract(self):
+        for key, value in self.selectors.items():
+            setattr(self, key, extract_data(opinion_tag, *value))
+
+    def translate(self):
+        single_opinion['content_en'] = translate(single_opinion['content_pl'])
+        single_opinion['pros_en'] = [translate(pros) for pros in single_opinion['pros_pl']]
+        single_opinion['cons_en'] = [translate(cons) for cons in single_opinion['cons_pl']]
     
     def transform_to_dict(self):
         return {key: getattr(self, key) for key in self.selectors.keys()}
