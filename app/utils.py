@@ -1,5 +1,5 @@
-from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
+
 def extract_data(ancestor, selector=None, attribute=None, multiple=False):
     if selector:
         if multiple:
@@ -19,7 +19,6 @@ def extract_data(ancestor, selector=None, attribute=None, multiple=False):
         return ancestor[attribute].strip()
     except (TypeError, KeyError):
         return None
-    
     
 def translate_data(text, source="pl", target="en"):
     return GoogleTranslator(source, target).translate(text=text)

@@ -1,5 +1,5 @@
-headers {
-    "Cookie":"",
-    "Host":"",
-    "User-Agent":""
+headers = {
+    "Cookie": "",
+    "Host": "",
+    "User-Agent": ""
 }
