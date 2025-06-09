@@ -1,5 +1,31 @@
 {% extends 'base.html' %}
-{% block title %}List of products{% endblock %}
-{% block content %}
+{% block title %}Products List{% endblock %} {# Change this line #}
 
+{% block content %}
+    <h2>Available Products</h2>
+    {% if products %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Product ID</th>
+                    <th>Product Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %} {# Iterate through the 'products' list #}
+                <tr>
+                    <td>{{ product.product_id }}</td>
+                    <td>{{ product.product_name }}</td>
+                    <td>
+                        <a href="{{ url_for('products.product_detail_page', product_id=product.product_id) }}" class="btn btn-info btn-sm">View Details</a>
+                        {# You might add download links here later if desired #}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No products found. Please extract opinions for some products first.</p>
+    {% endif %}
 {% endblock %}

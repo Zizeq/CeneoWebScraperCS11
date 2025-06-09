@@ -17,11 +17,11 @@
         <div class="row">
             <div class="col-3">
                 <nav>
-                    <ul>
-                        <li><a href="{{url_for('index')}}">Home</a></li>
-                        <li><a href="{{url_for('render_form')}}">Extract opinions</a></li>
-                        <li><a href="{{url_for('products')}}">Products list</a></li>
-                        <li><a href="{{url_for('about')}}">Author</a></li>
+                    <ul class="list-group">
+                        <li class="list-group-item"><a href="{{url_for('products.index')}}">Home</a></li>
+                        <li class="list-group-item"><a href="{{url_for('products.render_form')}}">Extract opinions</a></li>
+                        <li class="list-group-item"><a href="{{url_for('products.product_list_page')}}">Products list</a></li>
+                        <li class="list-group-item"><a href="{{url_for('products.about')}}">Author</a></li>
                     </ul>
                 </nav>
             </div>
@@ -31,8 +31,8 @@
             </div>
         </div>
     </section>
-    <footer class="container text-center">
-        <p>Jakub Dykier, Cracow University of Economics</p>
+    <footer class="container text-center mt-5">
+        <p>Jakub Dykier, University of Economics</p>
     </footer>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>

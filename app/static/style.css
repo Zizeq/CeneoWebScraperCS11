@@ -1,3 +1,46 @@
-h1{
-    color: #ff6400
+/* app/static/style.css */
+h1 {
+    color: #ff6400;
+}
+
+/* Add more styles as needed */
+body {
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.container {
+    max-width: 1200px;
+}
+
+.list-group-item a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.opinion-card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+.opinion-card h3 {
+    color: #333;
+    font-size: 1.2em;
+    margin-bottom: 10px;
+}
+
+.opinion-card p {
+    margin-bottom: 5px;
+}
+
+.badge {
+    font-size: 0.85em;
+    padding: 0.4em 0.6em;
+}
+
+.table thead th {
+    background-color: #f2f2f2;
 }

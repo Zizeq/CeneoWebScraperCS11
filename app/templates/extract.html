@@ -1,20 +1,20 @@
 {% extends 'base.html' %}
-{% block title %}Opinions extraction{% endblock %}
+{% block title %}Extract Opinions{% endblock %} {# Add a title specific to extract page #}
 {% block content %}
-    <form action="{{url_for('extract')}}" method="post">
-        <div>
+    {# Form action should now point to the blueprint's extract endpoint #}
+    <form action="{{url_for('products.extract')}}" method="post">
+        {{ form.csrf_token }} {# Include CSRF token for Flask-WTF forms #}
+        <div class="mb-3">
+            {{ form.product_id.label(class="form-label") }}
+            {{ form.product_id(class="form-control") }}
             {% if form.product_id.errors %}
-                <ul class="errors">{% for error in form.product_id.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                <ul class="text-danger">
+                    {% for error in form.product_id.errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
             {% endif %}
         </div>
-        <div>
-            {{form.product_id.label}}
-        </div>
-        <div>
-            {{form.product_id}}
-        </div>
-        <div>
-            {{form.submit}}
-        </div>
+        {{ form.submit(class="btn btn-primary") }}
     </form>
 {% endblock %}

@@ -1,7 +1,9 @@
 from flask import Flask
+import os
 
-app = Flask(__name__)
+def create_app():
+    app = Flask(__name__)
+    from app.views import products_bp
+    app.register_blueprint(products_bp)
 
-from app import views
-
-app.run()
+    return app

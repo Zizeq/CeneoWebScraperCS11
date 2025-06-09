@@ -21,83 +21,97 @@ class Product:
         return f"Product(product_id={self.product_id}, product_name={self.product_name}, opinions=["+",".join(repr(opinion) for opinion in self.opinions)+f"], stats={self.stats})"
 
     def extract_name(self):
-        next_page = f"https://www.ceneo.pl/{self.product_id}#tab=reviews"
-        response = requests.get(next_page, headers = headers)
+        response = requests.get(f"https://www.ceneo.pl/{self.product_id}#tab=reviews", headers=headers)
         if response.status_code == 200:
             page_dom = BeautifulSoup(response.text, 'html.parser')
             self.product_name = extract_data(page_dom, "h1")
             opinions_count = extract_data(page_dom, "a.product-review__link > span")
             return bool(opinions_count)
         else:
+            print(f"DEBUG: Failed to fetch product page for ID {self.product_id}. Status code: {response.status_code}")
             return False
 
     def extract_opinions(self):
         next_page = f"https://www.ceneo.pl/{self.product_id}#tab=reviews"
         while next_page:
-            response = requests.get(next_page, headers = headers)
+            response = requests.get(next_page, headers=headers)
             if response.status_code == 200:
-                print(next_page)
+                print(f"DEBUG: Scraping {next_page}")
                 page_dom = BeautifulSoup(response.text, 'html.parser')
-                opinions = page_dom.select("div.js_product-review:not(.user-post--highlight)")
-                print(len(opinions))
-                for opinion in opinions:
+                opinions_on_page = page_dom.select("div.js_product-review:not(.user-post--highlight)")
+                print(f"DEBUG: Found {len(opinions_on_page)} opinions on this page.")
+                if not opinions_on_page and not self.opinions:
+                    next_page = None
+                    continue
+                for opinion_tag in opinions_on_page:
                     single_opinion = Opinion()
-                    single_opinion.extract(opinion).translate().transform()
+                    single_opinion.extract(opinion_tag).translate().transform()
                     self.opinions.append(single_opinion)
                 try:
                     next_page = "https://www.ceneo.pl" + extract_data(page_dom,"a.pagination__next","href")
                 except TypeError:
                     next_page = None
+            else:
+                print(f"DEBUG: Failed to fetch opinions page {next_page}. Status code: {response.status_code}")
+                next_page = None
 
-    def export_opinions(self):
-        if not os.path.exists("./app/data"):
-            os.mkdir("./app/data")
-        if not os.path.exists("./app/data/opinions"):
-            os.mkdir("./app/data/opinions")
-        with open(f"./app/data/opinions/{self.product_id}.json", "w", encoding="UTF-8") as jf:
-            json.dump([opinion.transform_to_dict() for opinion in self.opinions], jf, ensure_ascii=False, indent=4)
-
-    def export_info(self):
-        if not os.path.exists("./app/data"):
-            os.mkdir("./app/data")
-        if not os.path.exists("./app/data/products"):
-            os.mkdir("./app/data/products")
-        with open(f"./app/data/products/{self.product_id}.json", "w", encoding="UTF-8") as jf:
-            json.dump(self.transform_to_dict(), jf, ensure_ascii=False, indent=4)
-
-    def transform_to_dict(self):
+    def to_dict(self):
         return {
             'product_id': self.product_id,
             'product_name': self.product_name,
             'stats': self.stats
         }
-    
+
+    def export_info(self):
+        directory = os.path.join(os.path.dirname(__file__), 'data', 'products')
+        os.makedirs(directory, exist_ok=True)
+        file_path = os.path.join(directory, f"{self.product_id}.json")
+        with open(file_path, "w", encoding="UTF-8") as jf:
+            json.dump(self.to_dict(), jf, indent=4, ensure_ascii=False)
+
+    def export_opinions(self):
+        directory = os.path.join(os.path.dirname(__file__), 'data', 'opinions')
+        os.makedirs(directory, exist_ok=True)
+        file_path = os.path.join(directory, f"{self.product_id}.json")
+        with open(file_path, "w", encoding="UTF-8") as jf:
+            json.dump([opinion.transform_to_dict() for opinion in self.opinions], jf, indent=4, ensure_ascii=False)
+
     def import_opinions(self):
-        with open(f"./app/data/opinions/{self.product_id}.json", "r", encoding="UTF-8") as jf:
-            opinions = json.load(jf)
-        for opinion in opinions:
+        opinions_file_path = os.path.join(os.path.dirname(__file__), 'data', 'opinions', f"{self.product_id}.json")
+        with open(opinions_file_path, "r", encoding="UTF-8") as jf:
+            opinions_data = json.load(jf)
+        for opinion_dict in opinions_data:
             single_opinion = Opinion()
-            for key, value in opinion.items():
+            for key, value in opinion_dict.items():
                 setattr(single_opinion, key, value)
             self.opinions.append(single_opinion)
 
     def import_info(self):
-        with open(f"./app/data/products/{self.product_id}.json", "r", encoding="UTF-8") as jf:
+        info_file_path = os.path.join(os.path.dirname(__file__), 'data', 'products', f"{self.product_id}.json")
+        with open(info_file_path, "r", encoding="UTF-8") as jf:
             info = json.load(jf)
         self.product_name = info['product_name']
         self.stats = info['stats']
 
     def analyze(self):
-        opinions = pd.DataFrame.from_dict([opinion.transform_to_dict() for opinion in self.opinions])
-        self.stats["opinions_count"] = opinions.shape[0]
-        self.stats["pros_count"] = int(opinions.pros_pl.astype(bool).sum())
-        self.stats["cons_count"] = int(opinions.cons_pl.astype(bool).sum())
-        self.stats["pros_cons_count"] = int(opinions.apply(lambda o: bool(o.pros_pl) and bool(o.cons_pl), axis=1).sum())
-        self.stats["average_rate"] = float(opinions.stars.mean())
-        self.stats["pros"] = opinions.pros_en.explode().value_counts().to_dict()
-        self.stats["cons"] = opinions.cons_en.explode().value_counts().to_dict()
-        self.stats["recommendations"] = opinions.recommendation.value_counts(dropna=False).reindex([False, True, np.nan], fill_value=0).to_dict()
-        self.stats["stars"] = opinions.stars.value_counts().reindex(list(np.arange(0,5.5,0.5)), fill_value=0).to_dict()
+        if not self.opinions:
+            self.stats = {
+                "opinions_count": 0, "pros_count": 0, "cons_count": 0,
+                "pros_cons_count": 0, "average_rate": 0.0,
+                "pros": {}, "cons": {}, "recommendations": {}, "stars": {}
+            }
+            return
+
+        opinions_df = pd.DataFrame.from_dict([opinion.transform_to_dict() for opinion in self.opinions])
+        self.stats["opinions_count"] = opinions_df.shape[0]
+        self.stats["pros_count"] = int(opinions_df.pros_pl.astype(bool).sum()) if 'pros_pl' in opinions_df.columns else 0
+        self.stats["cons_count"] = int(opinions_df.cons_pl.astype(bool).sum()) if 'cons_pl' in opinions_df.columns else 0
+        self.stats["pros_cons_count"] = int(opinions_df.apply(lambda o: bool(o.pros_pl) and bool(o.cons_pl), axis=1).sum()) if 'pros_pl' in opinions_df.columns and 'cons_pl' in opinions_df.columns else 0
+        self.stats["average_rate"] = float(opinions_df.stars.mean()) if 'stars' in opinions_df.columns else 0.0
+        self.stats["pros"] = opinions_df.pros_en.explode().value_counts().to_dict() if 'pros_en' in opinions_df.columns and not opinions_df.pros_en.empty else {}
+        self.stats["cons"] = opinions_df.cons_en.explode().value_counts().to_dict() if 'cons_en' in opinions_df.columns and not opinions_df.cons_en.empty else {}
+        self.stats["recommendations"] = opinions_df.recommendation.value_counts(dropna=False).reindex([False, True, np.nan], fill_value=0).to_dict() if 'recommendation' in opinions_df.columns else {}
+        self.stats["stars"] = opinions_df.stars.value_counts().reindex(list(np.arange(0,5.5,0.5)), fill_value=0).to_dict() if 'stars' in opinions_df.columns else {}
 
 class Opinion:
     selectors = {
@@ -145,17 +159,22 @@ class Opinion:
         return self
 
     def translate(self):
-        self.content_en = translate_data(self.content_pl)
-        self.pros_en = [translate_data(pros) for pros in self.pros_pl]
-        self.cons_en = [translate_data(cons) for cons in self.cons_pl]
-        print(self)
+        if self.content_pl:
+            self.content_en = translate_data(self.content_pl)
+        if isinstance(self.pros_pl, list):
+            self.pros_en = [translate_data(pros) for pros in self.pros_pl if pros]
+        if isinstance(self.cons_pl, list):
+            self.cons_en = [translate_data(cons) for cons in self.cons_pl if cons]
         return self
 
     def transform(self):
-        self.recommendation = True if self.recommendation=='Polecam' else False if  self.recommendation=="Nie polecam" else None
-        self.stars = float(self.stars.split("/")[0].replace(",", "."))
-        self.vote_yes = int(self.vote_yes)
-        self.vote_no = int(self.vote_no)
+        self.recommendation = True if self.recommendation=='Polecam' else False if self.recommendation=="Nie polecam" else None
+        try:
+            self.stars = float(self.stars.split("/")[0].replace(",", ".")) if isinstance(self.stars, str) else 0.0
+        except (AttributeError, ValueError):
+            self.stars = 0.0
+        self.vote_yes = int(self.vote_yes) if self.vote_yes else 0
+        self.vote_no = int(self.vote_no) if self.vote_no else 0
         return self
     
     def transform_to_dict(self):

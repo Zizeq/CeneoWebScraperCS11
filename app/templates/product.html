@@ -1,5 +1,113 @@
 {% extends 'base.html' %}
-{% block title %}{{product_id}}{% endblock %}
-{% block content %}
+{% block title %}{{ product.product_name | default('Product Details') }}{% endblock %}
 
+{% block content %}
+    {% if product %} {# Check if a single 'product' object is passed #}
+        <h2 class="mb-4">{{ product.product_name }} (ID: {{ product.product_id }})</h2>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                Product Statistics
+            </div>
+            <div class="card-body">
+                <p><strong>Total Opinions:</strong> {{ product.stats.opinions_count | default('N/A') }}</p>
+                <p><strong>Average Rating:</strong> {{ "%.2f"|format(product.stats.average_rate) | default('N/A') }} / 5.0</p>
+                <p><strong>Pros listed:</strong> {{ product.stats.pros_count | default('N/A') }}</p>
+                <p><strong>Cons listed:</strong> {{ product.stats.cons_count | default('N/A') }}</p>
+                <p><strong>Opinions with both Pros & Cons:</strong> {{ product.stats.pros_cons_count | default('N/A') }}</p>
+
+                <h5 class="mt-4">Recommendation Breakdown</h5>
+                {% if product.stats.recommendations %}
+                    <p>Recommended: {{ product.stats.recommendations.true | default(0) }}</p>
+                    <p>Not Recommended: {{ product.stats.recommendations.false | default(0) }}</p>
+                    <p>No Recommendation Given: {{ product.stats.recommendations.none | default(0) }}</p>
+                {% else %}
+                    <p>No recommendation data available.</p>
+                {% endif %}
+
+                <h5 class="mt-4">Star Rating Distribution</h5>
+                {% if product.stats.stars %}
+                    <ul>
+                        {% for rating, count in product.stats.stars.items() %}
+                            <li>{{ rating }} stars: {{ count }} opinions</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No star rating distribution data available.</p>
+                {% endif %}
+
+                <h5 class="mt-4">Most Frequent Pros (English)</h5>
+                {% if product.stats.pros %}
+                    <ul>
+                        {% for pro, count in product.stats.pros.items() %}
+                            <li>{{ pro }}: {{ count }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No frequent pros data available.</p>
+                {% endif %}
+
+                <h5 class="mt-4">Most Frequent Cons (English)</h5>
+                {% if product.stats.cons %}
+                    <ul>
+                        {% for con, count in product.stats.cons.items() %}
+                            <li>{{ con }}: {{ count }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No frequent cons data available.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <h3 class="mt-5">Opinions (Total: {{ product.opinions|length }})</h3>
+        {% if product.opinions %}
+            {% for opinion in product.opinions %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        Opinion ID: {{ opinion.opinion_id }} | Author: {{ opinion.author | default('Anonymous') }}
+                        <span class="float-end">Rating: {{ opinion.stars | default('N/A') }} / 5.0</span>
+                    </div>
+                    <div class="card-body">
+                        {% if opinion.recommendation is not none %}
+                            <p><strong>Recommendation:</strong> {% if opinion.recommendation %}Recommended <i class="bi bi-hand-thumbs-up-fill text-success"></i>{% else %}Not Recommended <i class="bi bi-hand-thumbs-down-fill text-danger"></i>{% endif %}</p>
+                        {% endif %}
+                        <p><strong>Published Date:</strong> {{ opinion.publish_date | default('N/A') }}</p>
+                        <p><strong>Purchase Date:</strong> {{ opinion.purchase_date | default('N/A') }}</p>
+                        <p><strong>Votes Up:</strong> {{ opinion.vote_yes | default(0) }} | <strong>Votes Down:</strong> {{ opinion.vote_no | default(0) }}</p>
+                        
+                        <p><strong>Content (PL):</strong> {{ opinion.content_pl | default('N/A') }}</p>
+                        {% if opinion.content_en %}
+                            <p><strong>Content (EN):</strong> {{ opinion.content_en }}</p>
+                        {% endif %}
+
+                        {% if opinion.pros_pl %}
+                            <p><strong>Pros (PL):</strong> {{ opinion.pros_pl | join(', ') }}</p>
+                        {% endif %}
+                        {% if opinion.pros_en %}
+                            <p><strong>Pros (EN):</strong> {{ opinion.pros_en | join(', ') }}</p>
+                        {% endif %}
+
+                        {% if opinion.cons_pl %}
+                            <p><strong>Cons (PL):</strong> {{ opinion.cons_pl | join(', ') }}</p>
+                        {% endif %}
+                        {% if opinion.cons_en %}
+                            <p><strong>Cons (EN):</strong> {{ opinion.cons_en | join(', ') }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No opinions found for this product.</p>
+        {% endif %}
+
+        <div class="mt-4">
+            <a href="{{ url_for('products.download_opinions', product_id=product.product_id, file_format='csv') }}" class="btn btn-primary">Download CSV</a>
+            <a href="{{ url_for('products.download_opinions', product_id=product.product_id, file_format='xlsx') }}" class="btn btn-success">Download XLSX</a>
+            <a href="{{ url_for('products.download_opinions', product_id=product.product_id, file_format='json') }}" class="btn btn-info">Download JSON</a>
+        </div>
+
+    {% else %}
+        <p>Product details could not be loaded. This product may not exist or its data might be corrupted.</p>
+    {% endif %}
 {% endblock %}
